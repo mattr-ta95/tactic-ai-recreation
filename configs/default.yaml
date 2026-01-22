@@ -1,0 +1,78 @@
+# TacticAI Default Configuration
+# All parameters with defaults - inherit from this file
+
+# Model Architecture
+model:
+  type: gat              # Options: simple, gat, multitask
+  node_features: 14      # 7 enhanced + 4 roles + 3 positional
+  hidden_dim: 128
+  num_layers: 4
+  dropout: 0.2
+  heads: 4               # GAT attention heads
+  edge_dim: 3            # Edge feature dimension (set null to disable)
+
+# Data Processing
+data:
+  data_dir: data/processed
+  distance_threshold: 5.0
+  use_enhanced_features: true
+  use_role_features: true
+  use_positional_context: true
+  use_knn_edges: false
+  knn_k: 8
+  use_augmentation: true
+  val_split: 0.2
+  test_split: 0.2
+
+# Training
+training:
+  batch_size: 32
+  num_epochs: 50
+  learning_rate: 0.0005
+  weight_decay: 1.0e-5
+  gradient_clip_val: 1.0
+  use_edge_features: false  # Edge features in attention (currently disabled)
+
+# Loss Function
+loss:
+  use_focal_loss: true
+  focal_gamma: 2.0
+  label_smoothing: 0.1
+
+# Early Stopping
+early_stopping:
+  monitor: val/top1_acc
+  patience: 10
+  min_delta: 0.001
+  mode: max
+
+# Learning Rate Scheduler
+scheduler:
+  factor: 0.5
+  patience: 5
+  min_lr: 1.0e-6
+
+# Checkpointing
+checkpoint:
+  dirpath: models/checkpoints
+  filename: "epoch={epoch}-val_acc={val/top1_acc:.4f}"
+  save_top_k: 3
+  monitor: val/top1_acc
+  mode: max
+
+# Logging
+logging:
+  project: tacticai
+  entity: null           # W&B entity (username or team)
+  log_every_n_steps: 10
+  save_dir: logs
+
+# Hardware
+hardware:
+  accelerator: auto      # auto, cpu, gpu, mps
+  devices: 1
+  num_workers: 0         # Set > 0 for multi-process data loading
+
+# Reproducibility
+seed: 42
+deterministic: true

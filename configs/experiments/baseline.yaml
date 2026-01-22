@@ -1,0 +1,25 @@
+# Baseline Configuration
+# Replicates the Phase 2 best configuration (45.6% test accuracy)
+# Inherits from default.yaml
+
+defaults:
+  - default
+
+experiment_name: phase2_baseline
+
+# All values match current train_baseline.py config
+model:
+  type: gat
+  node_features: 14
+  hidden_dim: 128
+  num_layers: 4
+  dropout: 0.2
+  heads: 4
+
+training:
+  batch_size: 32
+  num_epochs: 50
+  learning_rate: 0.0005
+  use_edge_features: false
+
+# Note: This should reproduce ~45.6% test accuracy

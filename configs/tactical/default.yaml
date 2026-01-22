@@ -1,0 +1,39 @@
+# TacticAI Tactical Optimization Configuration
+
+# Optimization parameters
+optimization:
+  num_iterations: 50          # Number of gradient descent iterations
+  learning_rate: 0.1          # Step size for position updates
+  constraint_penalty: 10.0    # Weight for constraint violations
+  convergence_threshold: 1e-4 # Stop if loss change below this
+
+# Position constraints
+constraints:
+  min_spacing: 1.0            # Minimum distance between players (meters)
+  max_movement: null          # Maximum movement from original position (null = unlimited)
+  boundary_margin: 0.5        # Margin from pitch edge (meters)
+
+# Pitch dimensions (StatsBomb)
+pitch:
+  length: 120.0
+  width: 80.0
+
+# Edge construction
+edges:
+  distance_threshold: 5.0     # Distance threshold for edges (meters)
+
+# Visualization
+visualization:
+  pitch_color: '#22312b'
+  line_color: '#c7d5cc'
+  attacker_color: '#FF6B6B'
+  defender_color: '#4ECDC4'
+  target_color: '#FFD93D'
+  arrow_color: '#FFFFFF'
+  figsize: [16, 8]
+  dpi: 150
+
+# Output
+output:
+  directory: visualizations/tactical
+  save_trajectory: true       # Also save loss/probability curves

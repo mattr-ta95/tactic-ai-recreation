@@ -1,0 +1,50 @@
+# W&B Sweep Configuration for Hyperparameter Search
+# Use with: python scripts/sweep.py --config configs/sweeps/hyperparameter_search.yaml
+
+program: scripts/train_lightning.py
+method: bayes  # Options: grid, random, bayes
+
+metric:
+  name: val/top1_acc
+  goal: maximize
+
+parameters:
+  model.hidden_dim:
+    values: [64, 128, 256]
+
+  model.num_layers:
+    values: [3, 4, 5]
+
+  model.dropout:
+    distribution: uniform
+    min: 0.1
+    max: 0.4
+
+  model.heads:
+    values: [2, 4, 8]
+
+  training.learning_rate:
+    distribution: log_uniform_values
+    min: 1.0e-4
+    max: 1.0e-2
+
+  training.batch_size:
+    values: [16, 32, 64]
+
+  loss.focal_gamma:
+    distribution: uniform
+    min: 1.0
+    max: 3.0
+
+  loss.label_smoothing:
+    distribution: uniform
+    min: 0.0
+    max: 0.2
+
+  data.distance_threshold:
+    values: [3.0, 5.0, 7.0]
+
+early_terminate:
+  type: hyperband
+  min_iter: 10
+  s: 2
