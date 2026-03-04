@@ -47,15 +47,16 @@ class SimpleCornerGNN(nn.Module):
         # Prediction head (node-level)
         self.receiver_head = nn.Linear(hidden_dim, 1)
     
-    def forward(self, x, edge_index, batch=None):
+    def forward(self, x, edge_index, batch=None, edge_attr=None):
         """
         Forward pass
-        
+
         Args:
             x: Node features [num_nodes, node_features]
             edge_index: Edge connectivity [2, num_edges]
             batch: Batch assignment (for batched graphs)
-        
+            edge_attr: Edge features (accepted but unused by GCN layers)
+
         Returns:
             receiver_logits: Logits for each player [num_nodes]
         """
@@ -65,10 +66,10 @@ class SimpleCornerGNN(nn.Module):
             if i < len(self.convs) - 1:
                 x = F.relu(x)
                 x = F.dropout(x, p=self.dropout, training=self.training)
-        
+
         # Predict receiver probability for each node
         receiver_logits = self.receiver_head(x).squeeze(-1)
-        
+
         return receiver_logits
 
 
@@ -237,13 +238,22 @@ class MultiTaskCornerGNN(nn.Module):
             nn.Linear(32, 1)
         )
     
-    def forward(self, x, edge_index, batch):
+    def forward(self, x, edge_index, batch=None, edge_attr=None):
         """
         Forward pass
-        
+
+        Args:
+            x: Node features [num_nodes, node_features]
+            edge_index: Edge connectivity [2, num_edges]
+            batch: Batch assignment (for batched graphs)
+            edge_attr: Edge features (accepted but unused by GCN layers)
+
         Returns:
             Dictionary with receiver, shot, and goal predictions
         """
+        if batch is None:
+            batch = torch.zeros(x.size(0), dtype=torch.long, device=x.device)
+
         # Shared encoding
         for i, conv in enumerate(self.convs):
             x = conv(x, edge_index)

@@ -190,6 +190,8 @@ class TacticalOptimizer:
                 batch,
                 edge_attr=updated_edge_attr if hasattr(graph, 'edge_attr') else None
             )
+            if isinstance(logits, dict):
+                logits = logits['receiver']
 
             # Compute objective (negative log probability of target)
             probs = F.softmax(logits, dim=0)
@@ -283,6 +285,8 @@ class TacticalOptimizer:
         edge_attr = graph.edge_attr if hasattr(graph, 'edge_attr') else None
 
         logits = self.model(graph.x, graph.edge_index, batch, edge_attr=edge_attr)
+        if isinstance(logits, dict):
+            logits = logits['receiver']
         return F.softmax(logits, dim=0)
 
     def _build_optimized_graph(

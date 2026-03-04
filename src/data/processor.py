@@ -6,6 +6,8 @@ Note: This implementation works with shots that have freeze frames,
 linking back to corner passes to extract receiver labels.
 """
 
+import math
+
 import torch
 import numpy as np
 import pandas as pd
@@ -230,7 +232,7 @@ class CornerKickProcessor:
                 features.append(angle_to_goal)
 
                 # In penalty box (rough approximation)
-                in_box = (x > 100 and 20 < y < 60)  # Penalty box area
+                in_box = (x >= 102.0 and 18.0 <= y <= 62.0)  # Penalty box area
                 features.append(float(in_box))
 
             # Player role features (if enabled)
@@ -258,6 +260,11 @@ class CornerKickProcessor:
         # Add metadata
         graph.match_id = corner_row.get('match_id', -1)
         graph.num_players = len(freeze_frame)
+        # Store corner location for augmentation feature recomputation
+        if corner_location and isinstance(corner_location, (list, tuple)) and len(corner_location) >= 2:
+            graph.corner_location = [float(corner_location[0]), float(corner_location[1])]
+        else:
+            graph.corner_location = [120.0, 0.0]  # Default right corner
 
         # Add receiver label
         # For shots linked to corners: use corner_pass_recipient_id if available
@@ -494,52 +501,94 @@ def augment_graph(graph: Data,
     aug_graph = graph.clone()
     num_features = aug_graph.x.shape[1]
 
+    # --- Step 1: Flip coordinates ---
     if augmentation_type in ['horizontal', 'both']:
-        # Flip x coordinate (assuming normalized to [0, 1])
         aug_graph.x[:, 0] = 1.0 - aug_graph.x[:, 0]
 
-        # If enhanced features present (7+ features), flip angle_to_goal (index 5)
-        # Feature order: x, y, teammate, dist_to_goal, dist_to_corner, angle_to_goal, in_box
-        if num_features > 5:
-            # Negate angle_to_goal since horizontal flip mirrors the angle
-            aug_graph.x[:, 5] = -aug_graph.x[:, 5]
-
-        # If positional context features present (14 features), flip positional_depth (index 13)
-        # Feature order: ..., is_gk, is_def, is_mid, is_fwd, dist_tm, dist_opp, positional_depth
-        if num_features > 13:
-            # Negate positional_depth since horizontal flip reverses x-direction
-            aug_graph.x[:, 13] = -aug_graph.x[:, 13]
-
     if augmentation_type in ['vertical', 'both']:
-        # Flip y coordinate
         aug_graph.x[:, 1] = 1.0 - aug_graph.x[:, 1]
 
-        # Also flip angle_to_goal for vertical flip
-        if num_features > 5:
-            aug_graph.x[:, 5] = -aug_graph.x[:, 5]
+    # --- Step 2: Recompute derived features from flipped positions ---
+    if num_features > 3:
+        # Denormalize to pitch coordinates
+        x_pos = aug_graph.x[:, 0] * 120.0
+        y_pos = aug_graph.x[:, 1] * 80.0
+        positions = torch.stack([x_pos, y_pos], dim=1)
 
-        # positional_depth is x-based, so no change needed for vertical flip
+        # Feature 3: dist_to_goal (goal at 120, 40)
+        goal = torch.tensor([120.0, 40.0], device=aug_graph.x.device)
+        aug_graph.x[:, 3] = torch.norm(positions - goal, dim=1) / 120.0
 
-    # CRITICAL: Update edge attributes to maintain graph consistency
-    # Edge attr format: [distance_norm, angle, same_team]
+    if num_features > 4:
+        # Feature 4: dist_to_corner
+        # Determine flipped corner location
+        corner_loc = getattr(graph, 'corner_location', [120.0, 0.0])
+        cx, cy = float(corner_loc[0]), float(corner_loc[1])
+        if augmentation_type in ['horizontal', 'both']:
+            cx = 120.0 - cx
+        if augmentation_type in ['vertical', 'both']:
+            cy = 80.0 - cy
+        corner = torch.tensor([cx, cy], device=aug_graph.x.device)
+        aug_graph.x[:, 4] = torch.norm(positions - corner, dim=1) / 120.0
+
+    if num_features > 5:
+        # Feature 5: angle_to_goal
+        dx = 120.0 - x_pos
+        dy = 40.0 - y_pos
+        aug_graph.x[:, 5] = torch.atan2(dy, dx) / math.pi
+
+    if num_features > 6:
+        # Feature 6: in_box (unified with feature_recompute.py constants)
+        aug_graph.x[:, 6] = ((x_pos >= 102.0) & (y_pos >= 18.0) & (y_pos <= 62.0)).float()
+
+    if num_features > 13:
+        # Features 11-13: positional context (nearest teammate/opponent, depth)
+        teammate_mask = aug_graph.x[:, 2] > 0.5
+        num_players = positions.shape[0]
+        device = aug_graph.x.device
+
+        # Pairwise distances
+        diff = positions.unsqueeze(0) - positions.unsqueeze(1)
+        distances = torch.norm(diff, dim=2)
+        distances = distances + torch.eye(num_players, device=device) * 1e6
+
+        for i in range(num_players):
+            is_tm = teammate_mask[i]
+            same_team = (teammate_mask == is_tm)
+            same_team[i] = False
+            diff_team = (teammate_mask != is_tm)
+
+            # Feature 11: dist to nearest teammate
+            if same_team.any():
+                aug_graph.x[i, 11] = distances[i, same_team].min() / 120.0
+            else:
+                aug_graph.x[i, 11] = 1.0
+
+            # Feature 12: dist to nearest opponent
+            if diff_team.any():
+                aug_graph.x[i, 12] = distances[i, diff_team].min() / 120.0
+            else:
+                aug_graph.x[i, 12] = 1.0
+
+        # Feature 13: positional depth relative to team centroid
+        for is_attacker in [True, False]:
+            team_mask = (teammate_mask == is_attacker)
+            if team_mask.sum() > 0:
+                centroid_x = positions[team_mask, 0].mean()
+                aug_graph.x[team_mask, 13] = (positions[team_mask, 0] - centroid_x) / 120.0
+
+    # --- Step 3: Update edge attributes ---
     if hasattr(aug_graph, 'edge_attr') and aug_graph.edge_attr is not None:
-        # Distance (index 0) doesn't change with flip
-        # Same_team (index 2) doesn't change with flip
-
-        # Angle (index 1) needs to be flipped
+        # Angle (index 1) needs to be recomputed from flipped positions
         if augmentation_type == 'horizontal':
-            # Horizontal flip: negate and adjust angle
-            # angle = atan2(dy, dx)/pi -> atan2(dy, -dx)/pi = pi - angle (normalized)
-            aug_graph.edge_attr[:, 1] = -aug_graph.edge_attr[:, 1]
+            angles = aug_graph.edge_attr[:, 1]
+            aug_graph.edge_attr[:, 1] = torch.where(
+                angles >= 0, 1.0 - angles, -1.0 - angles
+            )
         elif augmentation_type == 'vertical':
-            # Vertical flip: negate y component
-            # angle = atan2(dy, dx)/pi -> atan2(-dy, dx)/pi = -angle
             aug_graph.edge_attr[:, 1] = -aug_graph.edge_attr[:, 1]
         elif augmentation_type == 'both':
-            # Both flips: angle = atan2(-dy, -dx)/pi = angle + pi (mod 2pi)
-            # Since normalized to [-1, 1], this wraps around
             angles = aug_graph.edge_attr[:, 1]
-            # Add pi (normalized: add 1, then wrap)
             new_angles = angles + 1.0
             new_angles = torch.where(new_angles > 1.0, new_angles - 2.0, new_angles)
             aug_graph.edge_attr[:, 1] = new_angles

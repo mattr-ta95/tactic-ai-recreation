@@ -223,9 +223,10 @@ def download_data(
                 return ff if len(ff) > 0 else None
             if isinstance(ff, str):
                 try:
-                    result = eval(ff)
+                    import ast
+                    result = ast.literal_eval(ff)
                     return result if result else None
-                except:
+                except (ValueError, SyntaxError):
                     return None
             return ff if ff else None
 

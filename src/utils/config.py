@@ -1,5 +1,6 @@
 """Configuration loading utilities for TacticAI."""
 
+import ast
 import yaml
 from pathlib import Path
 from typing import Dict, Any, Optional
@@ -106,11 +107,8 @@ def parse_cli_overrides(args: list) -> Dict[str, Any]:
             continue
         key, value = arg.split('=', 1)
 
-        # Try to parse as number/bool
-        try:
-            value = eval(value)
-        except:
-            pass
+        # Safe type coercion (no eval)
+        value = _safe_parse_value(value)
 
         # Handle nested keys (model.hidden_dim -> {'model': {'hidden_dim': value}})
         keys = key.split('.')
@@ -120,3 +118,22 @@ def parse_cli_overrides(args: list) -> Dict[str, Any]:
         current[keys[-1]] = value
 
     return overrides
+
+
+def _safe_parse_value(value: str):
+    """Parse a CLI value string to an appropriate Python type without eval()."""
+    for parser in (int, float):
+        try:
+            return parser(value)
+        except ValueError:
+            continue
+    if value.lower() in ('true', 'yes'):
+        return True
+    if value.lower() in ('false', 'no'):
+        return False
+    if value.lower() in ('none', 'null'):
+        return None
+    try:
+        return ast.literal_eval(value)
+    except (ValueError, SyntaxError):
+        return value

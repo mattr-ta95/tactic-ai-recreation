@@ -1,17 +1,12 @@
 """TacticAI REST API - FastAPI application."""
 
 import os
-import sys
 from pathlib import Path
 from contextlib import asynccontextmanager
 
 import torch
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-
-# Add src to path for imports
-_src_path = Path(__file__).parent.parent
-sys.path.insert(0, str(_src_path))
 
 from api.schemas import HealthResponse
 from api.state import _state, get_state

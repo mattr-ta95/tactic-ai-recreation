@@ -5,6 +5,7 @@ Phase 1: Simple receiver prediction
 """
 
 import os
+import random
 import torch
 import torch.nn.functional as F
 from torch_geometric.loader import DataLoader
@@ -14,10 +15,6 @@ import numpy as np
 from pathlib import Path
 import json
 from datetime import datetime
-
-# Add src to path
-import sys
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
 from models.gnn import SimpleCornerGNN, get_model
 from data.processor import CornerKickProcessor, get_data_statistics, augment_graph
@@ -253,7 +250,15 @@ def main():
     print("=" * 70)
     print("TacticAI Baseline Training")
     print("=" * 70)
-    
+
+    # Set global random seeds for reproducibility
+    seed = 42
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
+
     # Configuration
     # Detect best available device (CUDA > MPS > CPU)
     if torch.cuda.is_available():
@@ -427,7 +432,7 @@ def main():
 
     # Group by match_id
     match_ids = [g.match_id for g in dataset]
-    unique_matches = list(set(match_ids))
+    unique_matches = sorted(set(match_ids))
 
     if config.get('use_validation_split', True):
         # Split into train/val/test (60/20/20 by match)

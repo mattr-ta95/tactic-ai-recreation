@@ -46,6 +46,13 @@ async def list_corners(
     return summaries
 
 
+@router.get("/corners/count")
+async def get_corner_count():
+    """Get the total number of corners in the dataset."""
+    state = get_state()
+    return {"total": len(state['dataset'])}
+
+
 @router.get("/corners/{corner_id}", response_model=CornerDetail)
 async def get_corner(
     corner_id: int,
@@ -83,10 +90,3 @@ async def get_corner(
         response.graph = graph_to_dict(graph)
 
     return response
-
-
-@router.get("/corners/count")
-async def get_corner_count():
-    """Get the total number of corners in the dataset."""
-    state = get_state()
-    return {"total": len(state['dataset'])}

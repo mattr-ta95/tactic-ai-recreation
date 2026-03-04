@@ -59,6 +59,8 @@ async def predict_receiver(request: PredictRequest):
         batch = torch.zeros(graph.num_nodes, dtype=torch.long, device=device)
         edge_attr = graph.edge_attr if hasattr(graph, 'edge_attr') else None
         logits = state['model'](graph.x, graph.edge_index, batch, edge_attr=edge_attr)
+        if isinstance(logits, dict):
+            logits = logits['receiver']
         probs = F.softmax(logits, dim=0)
 
     # Build response
