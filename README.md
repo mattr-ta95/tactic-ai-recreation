@@ -1,6 +1,6 @@
 # TacticAI
 
-A recreation of Google DeepMind's TacticAI system using Graph Neural Networks to analyze and optimize soccer corner kick tactics. This educational implementation demonstrates the TacticAI methodology with StatsBomb open data.
+A recreation of Google DeepMind's TacticAI system using Graph Neural Networks to analyze and optimize football corner kick tactics. This educational implementation demonstrates the TacticAI methodology with StatsBomb open data.
 
 ## What It Does
 
