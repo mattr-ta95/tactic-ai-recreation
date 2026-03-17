@@ -17,12 +17,14 @@ Unlike traditional ML that treats player positions as independent coordinates, T
 
 | Metric | Result |
 |--------|--------|
-| Receiver Prediction Accuracy | **45.6%** |
+| Receiver Prediction Accuracy | **68.2%** |
+| Top-3 Accuracy | **94.0%** |
+| Top-5 Accuracy | **98.5%** |
 | Random Baseline | 4.5% (1/22 players) |
-| Improvement Over Random | **10x** |
-| Dataset Size | 1,839 labeled corners |
+| Improvement Over Random | **15x** |
+| Dataset Size | 11,511 labeled corners (67 competitions) |
 
-*Note: This uses open data. The original TacticAI achieved 70%+ with commercial StatsBomb data (7,176 labeled corners).*
+*Trained on all StatsBomb open data (67 competition-seasons, ~2,700 matches). The original TacticAI achieved 70%+ with commercial StatsBomb 360 data.*
 
 ## Quick Start
 
@@ -41,16 +43,27 @@ pip install torch-geometric torch-scatter torch-sparse torch-cluster \
 ### 2. Download Data
 
 ```bash
+# Download all StatsBomb open data (~2,700 matches, 67 competitions)
+python scripts/download_all_statsbomb.py --validate --download
+
+# Or download a smaller subset for quick testing
 python scripts/download_data.py --num-matches 100
 ```
 
-### 3. Train Model
+### 3. Prepare Training Data
 
 ```bash
-python scripts/train_baseline.py
+python scripts/prepare_training_data.py
+python scripts/generate_synthetic_corners.py --combine
 ```
 
-### 4. Launch API & Dashboard
+### 4. Train Model
+
+```bash
+PYTHONPATH=src python scripts/train_baseline.py
+```
+
+### 5. Launch API & Dashboard
 
 ```bash
 # Terminal 1: Start API server
@@ -85,7 +98,10 @@ tacticai-project/
 │       ├── 02_explorer.py   # Dataset browser
 │       └── 03_custom_corner.py  # Custom scenarios
 ├── scripts/                 # CLI utilities
-│   ├── download_data.py     # Fetch StatsBomb data
+│   ├── download_all_statsbomb.py  # Bulk download all open data
+│   ├── download_data.py     # Fetch StatsBomb data (subset)
+│   ├── prepare_training_data.py   # Link shots to corners
+│   ├── generate_synthetic_corners.py  # Synthetic data augmentation
 │   ├── train_baseline.py    # Train models
 │   └── visualize_sample.py  # Sample visualizations
 ├── data/                    # Data directory (not in git)
