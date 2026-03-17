@@ -163,31 +163,31 @@ class CornerKickProcessor:
         if 'corner_pass_end_location' in corner_row.index:
             try:
                 loc_val = corner_row['corner_pass_end_location']
-                if pd.notna(loc_val):
+                if loc_val is not None and not (isinstance(loc_val, float) and np.isnan(loc_val)):
                     if isinstance(loc_val, str):
                         try:
                             import ast
                             corner_location = ast.literal_eval(loc_val)
                         except:
                             corner_location = None
-                    elif isinstance(loc_val, (list, tuple)):
-                        corner_location = loc_val
+                    elif isinstance(loc_val, (list, tuple, np.ndarray)):
+                        corner_location = list(loc_val)
             except:
                 pass
-        
+
         # Fallback to shot location if corner location not available
         if corner_location is None and 'location' in corner_row.index:
             try:
                 loc_val = corner_row['location']
-                if pd.notna(loc_val):
+                if loc_val is not None and not (isinstance(loc_val, float) and np.isnan(loc_val)):
                     if isinstance(loc_val, str):
                         try:
                             import ast
                             corner_location = ast.literal_eval(loc_val)
                         except:
                             corner_location = None
-                    elif isinstance(loc_val, (list, tuple)):
-                        corner_location = loc_val
+                    elif isinstance(loc_val, (list, tuple, np.ndarray)):
+                        corner_location = list(loc_val)
             except:
                 corner_location = None
         
@@ -269,7 +269,7 @@ class CornerKickProcessor:
         # Add receiver label
         # For shots linked to corners: use corner_pass_recipient_id if available
         # Otherwise: use pass_recipient_id or pass_end_location fallback
-        if 'corner_pass_recipient_id' in corner_row.index and pd.notna(corner_row.get('corner_pass_recipient_id')):
+        if 'corner_pass_recipient_id' in corner_row.index and corner_row.get('corner_pass_recipient_id') is not None and not (isinstance(corner_row.get('corner_pass_recipient_id'), float) and np.isnan(corner_row.get('corner_pass_recipient_id'))):
             # This is a shot linked to a corner - use corner's recipient_id
             # Create temporary event row with recipient info for matching
             temp_event = corner_row.copy()
@@ -301,7 +301,7 @@ class CornerKickProcessor:
         
         # METHOD 1: Use pass_recipient_id if available (BEST - ground truth)
         recipient_id = event_row.get('pass_recipient_id')
-        if pd.notna(recipient_id) and recipient_id is not None:
+        if recipient_id is not None and not (isinstance(recipient_id, float) and np.isnan(recipient_id)):
             recipient_id = int(recipient_id)
             
             # Search freeze frame for matching player ID
@@ -318,7 +318,7 @@ class CornerKickProcessor:
         
         # METHOD 2: Fallback - use pass_end_location + distance (HEURISTIC)
         pass_end = event_row.get('pass_end_location')
-        if pass_end is not None and pd.notna(pass_end):
+        if pass_end is not None and not (isinstance(pass_end, float) and np.isnan(pass_end)):
             # Parse if string
             if isinstance(pass_end, str):
                 try:

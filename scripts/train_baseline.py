@@ -277,7 +277,7 @@ def main():
         'num_layers': 4,
         'dropout': 0.2,
         'learning_rate': 0.0005,
-        'batch_size': 32,
+        'batch_size': 16,
         'num_epochs': 50,
         'distance_threshold': 5.0,
         'early_stopping_patience': 10,

@@ -26,30 +26,36 @@ def prepare_training_data():
     
     # Check for required files
     shots_path = 'data/processed/shots_freeze.pkl'
-    
-    # Try multi-league data first, then fall back to single-league
+    corners_path = 'data/processed/corners.pkl'
+
+    # Prefer corners.pkl (fast, robust) over full events CSV
     events_path = 'data/raw/events_multi_league.csv'
     if not os.path.exists(events_path):
         events_path = 'data/raw/events_pl_2022.csv'
-    
+
     if not os.path.exists(shots_path):
         print(f"❌ Shots file not found: {shots_path}")
         print("   Please run: python scripts/download_data.py")
         return None
-    
-    if not os.path.exists(events_path):
-        print(f"❌ Events file not found: {events_path}")
-        print("   Please run: python scripts/download_data.py")
-        return None
-    
+
     # Load data
     print("\n1. Loading data...")
     shots = pd.read_pickle(shots_path)
     print(f"   ✅ Loaded {len(shots)} shots with freeze frames")
-    
-    print(f"   Loading events from {events_path}...")
-    events = pd.read_csv(events_path, low_memory=False)
-    print(f"   ✅ Loaded {len(events)} total events")
+
+    # Use corners.pkl if available (much faster than parsing full events CSV)
+    if os.path.exists(corners_path):
+        print(f"   Loading corners from {corners_path}...")
+        events = pd.read_pickle(corners_path)
+        print(f"   ✅ Loaded {len(events)} corner passes from pickle")
+    elif os.path.exists(events_path):
+        print(f"   Loading events from {events_path}...")
+        events = pd.read_csv(events_path, low_memory=False)
+        print(f"   ✅ Loaded {len(events)} total events from CSV")
+    else:
+        print(f"❌ Neither {corners_path} nor {events_path} found")
+        print("   Please run: python scripts/download_data.py")
+        return None
     
     # Show competition breakdown if available
     if 'competition_name' in events.columns:
